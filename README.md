@@ -81,6 +81,18 @@ $env:PODMAN_MACHINE_AUTO_RESOURCE_UPDATE = 'false'
 pwsh -File scripts\init.ps1
 ```
 
+## Testing
+
+The test suite uses [Pester 5](https://pester.dev). Install it once, then run:
+
+```powershell
+Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -SkipPublisherCheck -Scope CurrentUser
+Import-Module Pester -MinimumVersion 5.0.0
+Invoke-Pester -Path tests\init.Tests.ps1 -Output Detailed
+```
+
+Tests cover the main lifecycle scenarios using mock podman scripts in `tests/mocks/` — no real Podman machine required. The release workflow runs these automatically on a `windows-latest` runner before publishing.
+
 ## Releasing
 
 Tag a new version to trigger the GitHub Actions release workflow, which builds the Go binary and uploads it alongside `init.ps1` and `provider.yaml`:
