@@ -1,0 +1,68 @@
+name: podman-windows
+version: v0.1.0
+description: DevPod on Podman for Windows (PowerShell)
+home: https://github.com/robejess/devpod-podman-powershell
+
+optionGroups:
+  - name: "Basic Options"
+    options:
+      - PODMAN_PATH
+      - INACTIVITY_TIMEOUT
+  - name: "Machine Management"
+    options:
+      - PODMAN_MACHINE_AUTO_START
+      - PODMAN_MACHINE_AUTO_INIT
+      - PODMAN_MACHINE_NAME
+      - PODMAN_MACHINE_START_TIMEOUT
+  - name: "Machine Resources"
+    options:
+      - PODMAN_MACHINE_CPUS
+      - PODMAN_MACHINE_MEMORY
+      - PODMAN_MACHINE_DISK_SIZE
+      - PODMAN_MACHINE_ROOTFUL
+      - PODMAN_MACHINE_AUTO_RESOURCE_UPDATE
+
+options:
+  PODMAN_PATH:
+    description: Path to the podman binary. Falls back to podman on PATH.
+    default: podman
+  INACTIVITY_TIMEOUT:
+    description: "Auto-stop container after inactivity period. Examples: 10m, 1h"
+  PODMAN_MACHINE_AUTO_START:
+    description: Automatically start the Podman machine if it is stopped.
+    default: "true"
+  PODMAN_MACHINE_AUTO_INIT:
+    description: Automatically initialize a Podman machine if none exists.
+    default: "false"
+  PODMAN_MACHINE_NAME:
+    description: Name of the Podman machine to use. Auto-detects if empty.
+  PODMAN_MACHINE_START_TIMEOUT:
+    description: Seconds to wait for the machine to become ready.
+    default: "60"
+  PODMAN_MACHINE_CPUS:
+    description: CPUs to allocate to the machine (used on init only).
+    default: "2"
+  PODMAN_MACHINE_MEMORY:
+    description: Memory in MB to allocate (used on init only).
+    default: "4096"
+  PODMAN_MACHINE_DISK_SIZE:
+    description: Disk size in GB to allocate (used on init only).
+    default: "100"
+  PODMAN_MACHINE_ROOTFUL:
+    description: Run machine in rootful mode.
+    default: "false"
+  PODMAN_MACHINE_AUTO_RESOURCE_UPDATE:
+    description: Apply resource changes in-place via `podman machine set` without recreating the machine.
+    default: "false"
+
+agent:
+  containerInactivityTimeout: ${INACTIVITY_TIMEOUT}
+  local: true
+  docker:
+    path: ${PODMAN_PATH}
+    install: false
+
+exec:
+  # DEV: hardcoded path — replace with binaries block before releasing (see Task 10)
+  init: pwsh -NonInteractive -NoProfile -File "C:\Users\robejess\Developer\devpod-podman-powershell\scripts\init.ps1"
+  command: '"${DEVPOD}" helper sh -c "${COMMAND}"'
