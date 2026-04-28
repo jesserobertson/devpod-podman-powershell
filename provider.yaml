@@ -1,5 +1,5 @@
 name: podman-windows
-version: v0.2.0
+version: v0.2.1
 description: DevPod on Podman for Windows (PowerShell)
 home: https://github.com/jesserobertson/devpod-podman-powershell
 
