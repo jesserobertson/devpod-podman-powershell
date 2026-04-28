@@ -1,7 +1,7 @@
 name: podman-windows
 version: v0.1.0
 description: DevPod on Podman for Windows (PowerShell)
-home: https://github.com/robejess/devpod-podman-powershell
+home: https://github.com/jesserobertson/devpod-podman-powershell
 
 optionGroups:
   - name: "Basic Options"
