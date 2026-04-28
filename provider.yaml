@@ -63,5 +63,5 @@ agent:
     install: false
 
 exec:
-  init: pwsh -NonInteractive -NoProfile -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://github.com/jesserobertson/devpod-podman-powershell/releases/latest/download/init.ps1' -UseBasicParsing).Content"
+  init: pwsh -NonInteractive -NoProfile -Command "Invoke-Expression (New-Object Net.WebClient).DownloadString('https://github.com/jesserobertson/devpod-podman-powershell/releases/latest/download/init.ps1')"
   command: '"${DEVPOD}" helper sh -c "${COMMAND}"'
