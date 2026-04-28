@@ -67,7 +67,7 @@ binaries:
     - os: windows
       arch: amd64
       path: https://github.com/jesserobertson/devpod-podman-powershell/releases/download/v0.2.0/init_windows_amd64.exe
-      checksum: ""  # filled in after release
+      checksum: "c169c4aa042420fccb760504639d90c100b26bf4c10d6a7b3aca859ddfe0f4e4"
 
 exec:
   init: '"${INIT_SCRIPT}"'
