@@ -35,6 +35,13 @@ if (-not $machineName) {
     }
 }
 
+# ── 3a. GPU option — warn if machine already exists ───────────────────────
+if ($machineName -and $env:PODMAN_MACHINE_NVIDIA_GPU -eq 'true') {
+    Write-Warning ("PODMAN_MACHINE_NVIDIA_GPU=true has no effect on existing machine '$machineName'. " +
+                   "To enable GPU support, recreate the machine: " +
+                   "podman machine rm $machineName && devpod up . with PODMAN_MACHINE_AUTO_INIT=true")
+}
+
 # ── 4. Machine existence ──────────────────────────────────────────────────────
 if (-not $machineName) {
     if ($env:PODMAN_MACHINE_AUTO_INIT -eq 'true') {
@@ -51,7 +58,22 @@ if (-not $machineName) {
             $initArgs += '--rootful'
         }
 
+        $userDataFile = $null
+        if ($env:PODMAN_MACHINE_NVIDIA_GPU -eq 'true') {
+            $userDataFile = Join-Path $env:TEMP 'podman-nvidia-userdata.yaml'
+            @'
+#cloud-config
+runcmd:
+  - curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo -o /etc/yum.repos.d/nvidia-container-toolkit.repo
+  - dnf install -y nvidia-container-toolkit
+  - nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+'@ | Set-Content -Path $userDataFile -Encoding utf8
+            $initArgs += '--user-data', $userDataFile
+            Write-Host "GPU support enabled: NVIDIA Container Toolkit will be installed via cloud-init."
+        }
+
         & $podmanExe @initArgs
+        if ($null -ne $userDataFile) { Remove-Item $userDataFile -Force -ErrorAction SilentlyContinue }
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Failed to initialize Podman machine '$machineName'."
             exit 1
