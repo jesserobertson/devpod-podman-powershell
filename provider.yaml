@@ -62,13 +62,6 @@ agent:
     path: ${PODMAN_PATH}
     install: false
 
-binaries:
-  INIT_SCRIPT:
-    - os: windows
-      arch: amd64
-      path: https://github.com/jesserobertson/devpod-podman-powershell/releases/download/v0.1.0/init.ps1
-      checksum: "278f1e90baaaa508125f121bbe73e7863d1127803ec1124dda4172838c727dbb"
-
 exec:
-  init: pwsh -NonInteractive -NoProfile -File "${INIT_SCRIPT}"
+  init: pwsh -NonInteractive -NoProfile -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://github.com/jesserobertson/devpod-podman-powershell/releases/latest/download/init.ps1' -UseBasicParsing).Content"
   command: '"${DEVPOD}" helper sh -c "${COMMAND}"'
