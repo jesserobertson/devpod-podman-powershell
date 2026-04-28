@@ -67,7 +67,7 @@ binaries:
     - os: windows
       arch: amd64
       path: https://github.com/jesserobertson/devpod-podman-powershell/releases/download/v0.1.0/init.ps1
-      checksum: ""  # paste SHA256 from release workflow output after first release
+      checksum: "278f1e90baaaa508125f121bbe73e7863d1127803ec1124dda4172838c727dbb"
 
 exec:
   init: pwsh -NonInteractive -NoProfile -File "${INIT_SCRIPT}"
