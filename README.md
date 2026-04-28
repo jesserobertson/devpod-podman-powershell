@@ -50,6 +50,45 @@ If your existing machine differs from the defaults, set the options to match to 
 devpod provider set-options podman-windows PODMAN_MACHINE_CPUS=11 PODMAN_MACHINE_MEMORY=2048
 ```
 
+## GPU support
+
+To enable NVIDIA GPU passthrough in devcontainers, set `PODMAN_MACHINE_NVIDIA_GPU=true` before
+the machine is created. On init, the machine receives a cloud-init user-data file that installs
+the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/)
+and generates CDI specs, making `nvidia.com/gpu=all` resolvable inside containers.
+
+**New machine:**
+
+```powershell
+devpod provider set-options podman-windows `
+  PODMAN_MACHINE_AUTO_INIT=true `
+  PODMAN_MACHINE_NVIDIA_GPU=true
+
+devpod up .
+```
+
+**Existing machine** (recreate required — cloud-init only runs on first boot):
+
+```powershell
+podman machine rm devpod-machine     # or your machine name
+devpod provider set-options podman-windows `
+  PODMAN_MACHINE_AUTO_INIT=true `
+  PODMAN_MACHINE_NVIDIA_GPU=true
+devpod up .
+```
+
+**Verify GPU access:**
+
+```powershell
+podman run --rm --device nvidia.com/gpu=all nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi
+```
+
+In `devcontainer.json`, use standard `runArgs`:
+
+```json
+"runArgs": ["--gpus", "all"]
+```
+
 ## How it works
 
 The provider is a small Go binary (`init_windows_amd64.exe`) that extracts and runs `init.ps1` via `pwsh -File`. The PowerShell script handles the full Podman machine lifecycle before DevPod takes over container management using Podman as its Docker-compatible runtime.
