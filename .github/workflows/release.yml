@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute checksum
+        id: checksum
+        run: |
+          SHA=$(sha256sum scripts/init.ps1 | awk '{print $1}')
+          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+          echo "Checksum: $SHA"
+
+      - name: Create GitHub Release and upload init.ps1
+        uses: softprops/action-gh-release@v2
+        with:
+          files: scripts/init.ps1
+          body: |
+            ## Install
+
+            ```
+            devpod provider add https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/provider.yaml
+            ```
+
+            **init.ps1 SHA256:** `${{ steps.checksum.outputs.sha256 }}`
+
+      - name: Upload provider.yaml to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: provider.yaml

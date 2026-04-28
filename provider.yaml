@@ -62,7 +62,13 @@ agent:
     path: ${PODMAN_PATH}
     install: false
 
+binaries:
+  INIT_SCRIPT:
+    - os: windows
+      arch: amd64
+      path: https://github.com/jesserobertson/devpod-podman-powershell/releases/download/v0.1.0/init.ps1
+      checksum: ""  # paste SHA256 from release workflow output after first release
+
 exec:
-  # DEV: hardcoded path — replace with binaries block before releasing (see Task 10)
-  init: pwsh -NonInteractive -NoProfile -File "C:\Users\robejess\Developer\devpod-podman-powershell\scripts\init.ps1"
+  init: pwsh -NonInteractive -NoProfile -File "${INIT_SCRIPT}"
   command: '"${DEVPOD}" helper sh -c "${COMMAND}"'
