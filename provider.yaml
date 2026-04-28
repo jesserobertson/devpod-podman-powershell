@@ -14,6 +14,7 @@ optionGroups:
       - PODMAN_MACHINE_AUTO_INIT
       - PODMAN_MACHINE_NAME
       - PODMAN_MACHINE_START_TIMEOUT
+      - PODMAN_MACHINE_NVIDIA_GPU
   - name: "Machine Resources"
     options:
       - PODMAN_MACHINE_CPUS
@@ -39,6 +40,12 @@ options:
   PODMAN_MACHINE_START_TIMEOUT:
     description: Seconds to wait for the machine to become ready.
     default: "60"
+  PODMAN_MACHINE_NVIDIA_GPU:
+    description: >
+      Pass a cloud-init user-data file to the machine on init that installs
+      the NVIDIA Container Toolkit and generates CDI specs. Requires
+      PODMAN_MACHINE_AUTO_INIT=true. Has no effect on already-existing machines.
+    default: "false"
   PODMAN_MACHINE_CPUS:
     description: CPUs to allocate to the machine (used on init only).
     default: "2"
