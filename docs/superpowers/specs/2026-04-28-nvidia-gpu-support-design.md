@@ -1,82 +1,105 @@
 # NVIDIA GPU Support Design
 
-**Date:** 2026-04-28
-**Status:** Approved
+**Date:** 2026-04-28  
+**Status:** Revised — cloud-init not supported on WSL2 backend; switched to SSH post-setup
 
 ## Overview
 
-Add opt-in NVIDIA GPU support to the `podman-windows` DevPod provider. When a new Podman Machine is created with `PODMAN_MACHINE_NVIDIA_GPU=true`, the machine is initialised with a cloud-init user-data file that installs the NVIDIA Container Toolkit and generates CDI specs, making `nvidia.com/gpu=all` resolvable inside containers.
+Add opt-in NVIDIA GPU support to the `podman-windows` DevPod provider. When `PODMAN_MACHINE_NVIDIA_GPU=true`, `init.ps1` SSHs into the running machine after startup and idempotently installs the NVIDIA Container Toolkit and generates CDI specs, making `nvidia.com/gpu=all` resolvable inside containers.
 
 ## Goals
 
 - `devcontainer.json` `runArgs: ["--gpus", "all"]` works without manual post-init steps
-- CDI specs persist across `podman machine stop/start` (WSL2 filesystem is persistent)
+- Works for both newly created and already-existing machines
+- Idempotent — skips setup if CDI specs already present
+- CDI specs survive machine restarts (nvidia-container-toolkit installs a `nvidia-cdi-refresh` systemd service that regenerates specs on boot)
 - Zero impact on users who don't set the GPU option
-- Existing machines are not modified; users recreate at their own discretion
 
 ## Non-Goals
 
-- Repairing GPU support on existing machines (cloud-init only fires on first boot)
 - Supporting non-WSL2 Podman Machine backends
 - Supporting GPUs other than NVIDIA
+
+## Why Not Cloud-Init
+
+`podman machine init` on the WSL2 backend does not support `--user-data`. The available flags are `--ignition-path` and `--playbook`, but SSH post-setup is simpler, more portable, and handles existing machines without recreation.
 
 ## Changes
 
 ### `provider.yaml`
 
-Add one option to the "Machine Management" group:
+Update description of `PODMAN_MACHINE_NVIDIA_GPU` (option already present):
 
 ```yaml
 PODMAN_MACHINE_NVIDIA_GPU:
   description: >
-    Pass a cloud-init user-data file to the machine on init that installs
-    the NVIDIA Container Toolkit and generates CDI specs. Requires
-    PODMAN_MACHINE_AUTO_INIT=true. Has no effect on already-existing machines.
+    After the machine starts, install the NVIDIA Container Toolkit via SSH
+    and generate CDI specs if not already present. Enables --gpus all in
+    devcontainers. Works on both new and existing machines.
   default: "false"
 ```
 
 ### `scripts/init.ps1`
 
-In the machine init block (step 4), when `PODMAN_MACHINE_NVIDIA_GPU=true`:
+Remove the cloud-init injection block from step 4. Add a new step after the machine is confirmed running (after step 5's readiness loop, or step 6's resource update — wherever execution reaches a confirmed-running state):
 
-1. Write the cloud-init YAML (below) to `$env:TEMP\podman-nvidia-userdata.yaml`
-2. Append `--user-data <tempfile>` to `$initArgs`
-3. Delete the temp file after `podman machine init` completes (success or failure)
-
-Cloud-init content (Fedora-based Podman Machine image uses `dnf`):
-
-```yaml
-#cloud-config
-runcmd:
-  - curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo -o /etc/yum.repos.d/nvidia-container-toolkit.repo
-  - dnf install -y nvidia-container-toolkit
-  - nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+```powershell
+# ── 6b. NVIDIA GPU setup (SSH) ────────────────────────────────────────────────
+if ($env:PODMAN_MACHINE_NVIDIA_GPU -eq 'true') {
+    Write-Host "Checking NVIDIA CDI specs on '$machineName'..."
+    $cdiStatus = & $podmanExe machine ssh $machineName `
+        "test -f /etc/cdi/nvidia.yaml && echo exists || echo missing" 2>&1
+    if ($cdiStatus -notmatch 'exists') {
+        Write-Host "CDI specs not found. Installing NVIDIA Container Toolkit (this may take a few minutes)..."
+        & $podmanExe machine ssh $machineName @'
+sudo curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo \
+  -o /etc/yum.repos.d/nvidia-container-toolkit.repo \
+&& sudo dnf install -y nvidia-container-toolkit \
+&& sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+'@
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to install NVIDIA Container Toolkit on '$machineName'."
+            exit 1
+        }
+        Write-Host "NVIDIA Container Toolkit installed and CDI specs generated."
+    }
+    else {
+        Write-Host "CDI specs already present on '$machineName', skipping NVIDIA setup."
+    }
+}
 ```
 
-When `PODMAN_MACHINE_NVIDIA_GPU=true` but `PODMAN_MACHINE_AUTO_INIT=false` (machine already exists), emit `Write-Warning` and continue — no error, no behaviour change.
+Remove the `$userDataFile` block and the warning block from step 4.
+
+### `tests/init.Tests.ps1`
+
+Replace the two existing GPU test contexts (`no machine, AUTO_INIT=true, NVIDIA_GPU=true` and `existing machine, NVIDIA_GPU=true`) with:
+
+1. **`existing machine running, NVIDIA_GPU=true, CDI missing`** — SSH setup runs, exits 0
+2. **`existing machine running, NVIDIA_GPU=true, CDI present`** — SSH setup skipped, exits 0
+
+### Mocks
+
+- Remove `tests/mocks/podman-no-machine-gpu.ps1` (no longer needed)
+- Update `tests/mocks/podman-running.ps1` to handle `machine ssh <name> "..."`:
+  - Default: return `exists` (CDI present)
+- Add `tests/mocks/podman-running-no-cdi.ps1`: identical to `podman-running.ps1` but `machine ssh` returns `missing`
 
 ### `README.md`
 
-Add a "GPU support" section:
-
-- Set `PODMAN_MACHINE_NVIDIA_GPU=true` alongside `PODMAN_MACHINE_AUTO_INIT=true` before the machine is created
-- If a machine already exists, remove it first: `podman machine rm <name>`
-- Verify GPU access after the machine starts: `podman run --rm --device nvidia.com/gpu=all nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi`
+Update GPU support section: remove the "recreate required" note, update workflow to show it works on existing machines.
 
 ## Workflow
 
-```
-devpod provider set-options podman-windows \
-  PODMAN_MACHINE_AUTO_INIT=true \
-  PODMAN_MACHINE_NVIDIA_GPU=true
-
-devpod up .   # machine is created with cloud-init, CDI specs generated
+```powershell
+devpod provider set-options podman-windows -o PODMAN_MACHINE_NVIDIA_GPU=true
+devpod up .   # init.ps1 SSHs in, installs toolkit if missing, CDI specs generated
 ```
 
-On subsequent `devpod up` calls the machine is already running; the GPU option is silently ignored (specs persist on the WSL2 filesystem).
+On subsequent `devpod up` calls, CDI specs are already present — setup is skipped in ~1 second.
 
 ## Key Design Decisions
 
-- **Cloud-init only (no SSH post-setup):** The WSL2 filesystem persists across machine restarts, so one-time setup at machine creation is sufficient. Recreating a machine is fast enough that a "repair existing machine" path adds complexity without proportionate benefit.
-- **Embedded here-string:** The cloud-init YAML is written inline in `init.ps1` rather than shipped as a separate file, keeping the provider self-contained (the Go binary wraps only `init.ps1`).
-- **Warn, don't error, on existing machines:** Failing hard when the machine already exists would break `devpod up` for users who set the option after machine creation. A warning is more helpful.
+- **SSH post-setup over `--ignition-path`/`--playbook`:** SSH is portable, debuggable, works on existing machines, and requires no knowledge of Ignition or Ansible. The machine is already running when this step fires, so SSH is always available.
+- **Idempotent check:** `test -f /etc/cdi/nvidia.yaml` before running the install means repeated `devpod up` calls skip the slow DNF install entirely.
+- **nvidia-cdi-refresh systemd service:** The toolkit package installs this service, which regenerates CDI specs on every boot — so specs survive machine restarts without any provider involvement.
