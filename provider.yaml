@@ -1,5 +1,5 @@
 name: podman-windows
-version: v0.1.0
+version: v0.2.0
 description: DevPod on Podman for Windows (PowerShell)
 home: https://github.com/jesserobertson/devpod-podman-powershell
 
@@ -62,6 +62,13 @@ agent:
     path: ${PODMAN_PATH}
     install: false
 
+binaries:
+  INIT_SCRIPT:
+    - os: windows
+      arch: amd64
+      path: https://github.com/jesserobertson/devpod-podman-powershell/releases/download/v0.2.0/init_windows_amd64.exe
+      checksum: ""  # filled in after release
+
 exec:
-  init: pwsh -NonInteractive -NoProfile -Command "$t=[IO.Path]::GetTempFileName()+'_d.ps1';(New-Object Net.WebClient).DownloadFile('https://github.com/jesserobertson/devpod-podman-powershell/releases/latest/download/init.ps1',$t);try{&$t}finally{Remove-Item $t -ea 0}"
+  init: '"${INIT_SCRIPT}"'
   command: '"${DEVPOD}" helper sh -c "${COMMAND}"'

@@ -13,17 +13,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build Windows binary
+        run: GOOS=windows GOARCH=amd64 go build -o init_windows_amd64.exe ./cmd/init/
+
       - name: Compute checksum
         id: checksum
         run: |
-          SHA=$(sha256sum scripts/init.ps1 | awk '{print $1}')
+          SHA=$(sha256sum init_windows_amd64.exe | awk '{print $1}')
           echo "sha256=$SHA" >> $GITHUB_OUTPUT
           echo "Checksum: $SHA"
 
-      - name: Create GitHub Release and upload init.ps1
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: scripts/init.ps1
+          files: |
+            init_windows_amd64.exe
+            scripts/init.ps1
+            provider.yaml
           body: |
             ## Install
 
@@ -31,9 +41,4 @@ jobs:
             devpod provider add https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/provider.yaml
             ```
 
-            **init.ps1 SHA256:** `${{ steps.checksum.outputs.sha256 }}`
-
-      - name: Upload provider.yaml to release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: provider.yaml
+            **init_windows_amd64.exe SHA256:** `${{ steps.checksum.outputs.sha256 }}`
