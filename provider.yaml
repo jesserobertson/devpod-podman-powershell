@@ -63,5 +63,5 @@ agent:
     install: false
 
 exec:
-  init: pwsh -NonInteractive -NoProfile -Command "Invoke-Expression (New-Object Net.WebClient).DownloadString('https://github.com/jesserobertson/devpod-podman-powershell/releases/latest/download/init.ps1')"
+  init: pwsh -NonInteractive -NoProfile -Command "$t=[IO.Path]::GetTempFileName()+'_d.ps1';(New-Object Net.WebClient).DownloadFile('https://github.com/jesserobertson/devpod-podman-powershell/releases/latest/download/init.ps1',$t);try{&$t}finally{Remove-Item $t -ea 0}"
   command: '"${DEVPOD}" helper sh -c "${COMMAND}"'
