@@ -216,6 +216,25 @@ else {
     }
 }
 
+# ── 6d. NVIDIA GPU setup (SSH) ───────────────────────────────────────────────
+if ($env:PODMAN_MACHINE_NVIDIA_GPU -eq 'true') {
+    Write-Host "Checking NVIDIA CDI specs on '$machineName'..."
+    $cdiStatus = & $podmanExe machine ssh $machineName `
+        "test -f /etc/cdi/nvidia.yaml && echo exists || echo missing" 2>&1
+    if ($cdiStatus -notmatch 'exists') {
+        Write-Host "CDI specs not found. Installing NVIDIA Container Toolkit (this may take a few minutes)..."
+        & $podmanExe machine ssh $machineName "sudo curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo -o /etc/yum.repos.d/nvidia-container-toolkit.repo && sudo dnf install -y nvidia-container-toolkit && sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to install NVIDIA Container Toolkit on '$machineName'."
+            exit 1
+        }
+        Write-Host "NVIDIA Container Toolkit installed and CDI specs generated."
+    }
+    else {
+        Write-Host "CDI specs already present on '$machineName', skipping NVIDIA setup."
+    }
+}
+
 # ── 7. Connectivity check ─────────────────────────────────────────────────────
 Write-Host "Testing Podman connectivity..."
 $null = & $podmanExe ps 2>&1
