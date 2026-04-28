@@ -1,0 +1,4 @@
+# PowerShell test artefacts
+*.ps1xml
+# Local DevPod test state
+.devpod/
