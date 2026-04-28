@@ -42,9 +42,9 @@ options:
     default: "60"
   PODMAN_MACHINE_NVIDIA_GPU:
     description: >
-      Pass a cloud-init user-data file to the machine on init that installs
-      the NVIDIA Container Toolkit and generates CDI specs. Requires
-      PODMAN_MACHINE_AUTO_INIT=true. Has no effect on already-existing machines.
+      After the machine starts, install the NVIDIA Container Toolkit via SSH
+      and generate CDI specs if not already present. Enables --gpus all in
+      devcontainers. Works on both new and existing machines.
     default: "false"
   PODMAN_MACHINE_CPUS:
     description: CPUs to allocate to the machine (used on init only).
