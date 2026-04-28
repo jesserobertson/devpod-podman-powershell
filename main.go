@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed ../../scripts/init.ps1
+//go:embed scripts/init.ps1
 var initScript string
 
 func main() {
