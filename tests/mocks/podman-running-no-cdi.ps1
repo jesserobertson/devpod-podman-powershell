@@ -1,4 +1,4 @@
-# Mock podman: one machine named 'test-machine', running, CPUs=2, Memory=4096, Disk=100
+# Mock podman: one machine named 'test-machine', running, CDI specs absent
 param()
 
 switch ($args[0]) {
@@ -16,7 +16,7 @@ switch ($args[0]) {
             'start' { exit 0 }
             'stop'  { exit 0 }
             'set'   { exit 0 }
-            'ssh'   { Write-Output 'exists'; exit 0 }
+            'ssh'   { Write-Output 'missing'; exit 0 }
         }
     }
     'ps' { exit 0 }

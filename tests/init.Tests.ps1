@@ -148,43 +148,26 @@ Describe 'init.ps1' {
         }
     }
 
-    Context 'no machine, AUTO_INIT=true, NVIDIA_GPU=true' {
-        BeforeAll {
-            $script:TempUserData = Join-Path $env:TEMP 'podman-nvidia-userdata.yaml'
-            if (Test-Path $script:TempUserData) { Remove-Item $script:TempUserData -Force }
-        }
-
-        It 'exits 0 and passes --user-data to machine init' {
+    Context 'running machine, NVIDIA_GPU=true, CDI missing' {
+        It 'runs SSH setup and exits 0' {
             $result = Invoke-Init @{
-                PODMAN_PATH               = (Join-Path $script:MocksDir 'podman-no-machine-gpu.ps1')
-                PODMAN_MACHINE_AUTO_INIT  = 'true'
-                PODMAN_MACHINE_AUTO_START = 'true'
+                PODMAN_PATH               = (Join-Path $script:MocksDir 'podman-running-no-cdi.ps1')
                 PODMAN_MACHINE_NVIDIA_GPU = 'true'
             }
             $result.ExitCode | Should -Be 0
-            $result.Text     | Should -Match '--user-data'
-        }
-
-        It 'cleans up the temp user-data file after init' {
-            $result = Invoke-Init @{
-                PODMAN_PATH               = (Join-Path $script:MocksDir 'podman-no-machine-gpu.ps1')
-                PODMAN_MACHINE_AUTO_INIT  = 'true'
-                PODMAN_MACHINE_AUTO_START = 'true'
-                PODMAN_MACHINE_NVIDIA_GPU = 'true'
-            }
-            $result.ExitCode           | Should -Be 0
-            Test-Path $script:TempUserData | Should -Be $false
+            $result.Text     | Should -Match 'Installing NVIDIA Container Toolkit'
+            $result.Output   | Should -Contain 'Podman provider initialized successfully.'
         }
     }
 
-    Context 'existing machine, NVIDIA_GPU=true' {
-        It 'warns that GPU option has no effect and exits 0' {
+    Context 'running machine, NVIDIA_GPU=true, CDI present' {
+        It 'skips SSH setup and exits 0' {
             $result = Invoke-Init @{
                 PODMAN_PATH               = (Join-Path $script:MocksDir 'podman-running.ps1')
                 PODMAN_MACHINE_NVIDIA_GPU = 'true'
             }
             $result.ExitCode | Should -Be 0
-            $result.Text     | Should -Match 'no effect'
+            $result.Text     | Should -Match 'already present'
             $result.Output   | Should -Contain 'Podman provider initialized successfully.'
         }
     }
